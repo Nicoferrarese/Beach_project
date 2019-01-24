@@ -8,4 +8,4 @@ TODO:
 * Signal Handler
 * Far fare Fork e uccidere il padre (server modalita daemon)
 * ...
-Server1 e Client1 nuve versioni, funzionano meglio. gestiscono gia il caso "quit", anche se bisognerà farlo con signal handler.
+* Server1 e Client1 nuve versioni, funzionano meglio. gestiscono gia il caso "quit", anche se bisognerà farlo con signal handler.
