@@ -5,17 +5,38 @@
 #include<arpa/inet.h> //inet_addr
 #include<unistd.h>    //write
 #include<pthread.h> 
- #include <signal.h>
+#include<signal.h>
+#include<semaphore.h>
 #include"umbrella.h"
 
+#define K 101
 
-void *connection_handler(void *);
+sem_t SlotLibero,SlotOccupato,mutex;
+void* connection_handler(void *);
+void* connection_master(void *);
+
 int i;
+int wp=0;
+int rp=0;
+char buffer[K];
 int main(int argc , char *argv[])
-{
+{   
+    sem_init(&SlotLibero, 1, K);
+    sem_init(&SlotOccupato, 1, 0);
+    sem_init(&mutex, 1, 0);
+    pthread_t thread_id,masterThr;
     int socket_desc , client_sock , c;
     struct sockaddr_in server , client;
     
+    struct umbrella_t beach[N_um];
+    
+    if(pthread_create(&masterThr,NULL,connection_master,(void*)&beach)!=0)
+    {
+        perror("Thread master creation failed. Error");
+        return 0;
+    }
+    puts("--->Thread Master created");
+    sem_wait(&SlotOccupato);
     socket_desc = socket(AF_INET , SOCK_STREAM , 0);
     if (socket_desc == -1)
     {
@@ -24,7 +45,7 @@ int main(int argc , char *argv[])
     puts("Socket created");
 
     server.sin_family= AF_INET;
-     server.sin_addr.s_addr = INADDR_ANY;
+    server.sin_addr.s_addr = INADDR_ANY;
     server.sin_port = htons( 8888 );
      
     //Bind
@@ -41,7 +62,9 @@ int main(int argc , char *argv[])
 
     puts("Waiting for incoming connections...");
     c = sizeof(struct sockaddr_in);
-	pthread_t thread_id;
+	
+    
+
 	
     while( (client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
     {
@@ -68,8 +91,17 @@ int main(int argc , char *argv[])
      
     return 0;
 }
+void *connection_master(void *beach1){
+    sem_wait(&SlotLibero);
+    puts("\tReading Beach Status..");
+    readBeachStatus(beach1);
+    sleep(1);
+    puts("\tRead success");
+    //PrintStatus(beach1);
+    sem_post(&SlotOccupato);
+    }
 void *connection_handler(void *socket_desc)
-{   int f=4;
+{   
     //Get the socket descriptor
     int sock = *(int*)socket_desc;
     int read_size;
@@ -115,3 +147,67 @@ void *connection_handler(void *socket_desc)
          
     return 0;
 } 
+
+void readBeachStatus(void* beach1){
+    struct umbrella_t * beach=(struct umbrella_t*)beach1;
+    char del[]=" ";
+    FILE * fd;
+    int num=0;
+    char c[30];  
+    int i=0; 
+    char *p;
+       
+    if((fd = fopen("spiaggia.txt", "r")) == NULL) {
+        perror("Errore apertura");
+        exit(-1);
+    } 
+    puts("\tINIT open correctly!");   
+    while(fgets(c, 30, fd)!=NULL) {               
+        p = strtok (c, del);
+        while(p){
+            if(i==0){
+                beach[num].number=(atoi(p)-1);  
+            }
+            else if(i==1){
+                beach[num].status=atoi(p);           
+            }
+            else if(i==2){
+                beach[num].start=atoi(p);  
+            }
+            else if(i==3){
+                beach[num].expire=atoi(p);            
+            }
+            p = strtok (NULL, del);
+            i++;
+            if(i==4){i=0;num++;}
+        }
+    }
+    if (fclose(fd) != 0) {
+        perror("Errore chiusura file\n");
+        exit(-2);
+    } 
+    }
+    void PrintStatus(void* beach1){
+        struct umbrella_t * beach=(struct umbrella_t*)beach1;
+        int n_um=0,r,c;
+
+        printf(">>Stato Spiaggia:\n");
+        for(r=0;r<NROW;r++){
+            if(r==0)
+                printf("\n");
+            for(c=0;c<NCOL;c++){
+                if(c==0)
+                    printf("\t");
+                if(n_um<N_um){
+                if(beach[n_um].status){
+                    printf(ANSI_COLOR_CYAN "%d \t" ANSI_COLOR_RESET,beach[n_um].number);
+                }
+                else
+                    printf("%d \t",beach[n_um].number);
+                }
+                n_um++;   
+            }
+            printf("\n");
+        }
+        
+    }

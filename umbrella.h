@@ -1,8 +1,8 @@
-#define NROW 10
+#define NROW 14
 #define NCOL 10
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
-#define N_um 100
+#define N_um 132
 
 typedef struct umbrella_t{
   int number;
@@ -13,6 +13,7 @@ typedef struct umbrella_t{
   int diritto;        // Diritto di accedere all' ombrellone (X cancel)
 }umbrella;
 
-void PrintStatus(umbrella[]);
+void PrintStatus(void*);
 void TxtStatus(umbrella[]);
 umbrella* BookInput(char*,umbrella*);
+void readBeachStatus(void*);
