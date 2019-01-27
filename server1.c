@@ -14,6 +14,7 @@
 sem_t SlotLibero,SlotOccupato,mutex;
 void* connection_handler(void *);
 void* connection_master(void *);
+void sighand(int);
 
 int i;
 int wp=0;
@@ -29,7 +30,8 @@ int main(int argc , char *argv[])
     struct sockaddr_in server , client;
     
     struct umbrella_t beach[N_um];
-    
+    if (signal(SIGINT, sighand) == SIG_ERR)
+        perror("signal failed\n");
     if(pthread_create(&masterThr,NULL,connection_master,(void*)&beach)!=0)
     {
         perror("Thread master creation failed. Error");
@@ -120,7 +122,7 @@ void *connection_handler(void *socket_desc)
         if(strcmp(client_message,"quit")==0){
             printf("Exiting...\n");
             write(sock , NULL , 0);
-            pthread_kill(self,9);
+            sighand(2);
             }
 
 		client_message[sizeof(client_message)] = '\0';
@@ -211,3 +213,13 @@ void readBeachStatus(void* beach1){
         }
         
     }
+void sighand(int sig)
+{   
+  if (sig == SIGINT)
+  {
+    printf( "CTRL-C received ... GAME OVER ! \n");
+    exit(0);
+
+  }
+
+}
