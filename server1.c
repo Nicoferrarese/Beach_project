@@ -6,6 +6,8 @@
 #include<unistd.h>    //write
 #include<pthread.h> 
 #include<signal.h>
+#include <sys/stat.h>
+#include <syslog.h>
 #include<semaphore.h>
 #include"umbrella.h"
 
@@ -20,18 +22,52 @@ int i;
 int wp=0;
 int rp=0;
 char buffer[K];
+
 int main(int argc , char *argv[])
-{   
+{   pid_t myself;
+    struct umbrella_t beach[N_um];
     sem_init(&SlotLibero, 1, K);
     sem_init(&SlotOccupato, 1, 0);
     sem_init(&mutex, 1, 0);
     pthread_t thread_id,masterThr;
     int socket_desc , client_sock , c;
     struct sockaddr_in server , client;
+    struct sigaction sa;
+    //sigemptyset(&sa);
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = sighand;
+
+    myself=fork();
     
-    struct umbrella_t beach[N_um];
-    if (signal(SIGINT, sighand) == SIG_ERR)
-        perror("signal failed\n");
+    if(myself!=0){
+        exit(0);        
+    }      
+    if (setsid() < 0)
+        exit(EXIT_FAILURE);        
+
+     sigaction(SIGINT,  &sa, 0);
+     sigaction(SIGTERM, &sa, 0);
+     sigaction(SIGHUP,  &sa, 0);
+     sigaction(SIGQUIT, &sa, 0);
+
+    /* Fork off for the second time*/
+    myself = fork();
+
+    /* An error occurred */
+    if (myself< 0)
+        exit(EXIT_FAILURE);
+
+    /* Success: Let the parent terminate */
+    if (myself > 0)        
+        exit(EXIT_SUCCESS);
+
+    /* Set new file permissions
+    https://stackoverflow.com/questions/17954432/creating-a-daemon-in-linux/17955149#17955149
+    !!change directory and permessi 
+    */
+    printf("\nson SERVER PID: %d\n Father PID: %d\n",(int)getpid(),(int)getppid());   
+     
+    
     if(pthread_create(&masterThr,NULL,connection_master,(void*)&beach)!=0)
     {
         perror("Thread master creation failed. Error");
@@ -77,9 +113,7 @@ int main(int argc , char *argv[])
             perror("could not create thread");
             return 1;
         }
-         
-        //Now join the thread , so that we dont terminate before the thread
-        //pthread_join( thread_id , NULL);
+
         puts("Handler assigned");
         i++;
         printf("\tClient connected: %d\n",i);
@@ -97,7 +131,6 @@ void *connection_master(void *beach1){
     sem_wait(&SlotLibero);
     puts("\tReading Beach Status..");
     readBeachStatus(beach1);
-    sleep(1);
     puts("\tRead success");
     //PrintStatus(beach1);
     sem_post(&SlotOccupato);
@@ -213,13 +246,23 @@ void readBeachStatus(void* beach1){
         }
         
     }
-void sighand(int sig)
-{   
-  if (sig == SIGINT)
-  {
-    printf( "CTRL-C received ... GAME OVER ! \n");
-    exit(0);
-
-  }
-
+void sighand(int sig){ 
+    printf("\n");
+     
+    if (sig == SIGINT){
+        printf( "CTRL-C received ... GAME OVER ! \n");
+        exit(0);
+    }
+    if (sig == SIGTERM){
+        printf( "SIGTERM received ... GAME OVER ! \n");
+        exit(0);
+    }
+    if (sig == SIGQUIT){
+        printf( "SIGQUIT received ... GAME OVER ! \n");
+        exit(0);
+    }
+    if (sig == SIGHUP){
+        printf( "SIGHUP received ... GAME OVER ! \n");
+        exit(0);
+    }
 }
