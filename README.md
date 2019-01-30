@@ -1,4 +1,5 @@
 # Beach_project
+latest version: client/server 1.3
 TODO:
 * INPUT control (client -esteso- & server-ridotto?-)
 * Array di mutex(possibilità di scrittura di due ombrelloni diversi simultaneamente)
